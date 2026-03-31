@@ -34,7 +34,7 @@ public class Users implements UserDetails {
     private String password;
 
     @Column(nullable = false)
-    private String PixKey;
+    private String pixKey;
 
 
     @Override
