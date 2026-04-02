@@ -5,8 +5,8 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
-import portifolio.deuquanto.dto.LoginRequest;
-import portifolio.deuquanto.dto.LoginResponse;
+import portifolio.deuquanto.dto.request.LoginRequest;
+import portifolio.deuquanto.dto.response.LoginResponse;
 import portifolio.deuquanto.entity.Users;
 import portifolio.deuquanto.security.TokenConfig;
 

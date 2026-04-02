@@ -1,4 +1,4 @@
-package portifolio.deuquanto.dto;
+package portifolio.deuquanto.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
 

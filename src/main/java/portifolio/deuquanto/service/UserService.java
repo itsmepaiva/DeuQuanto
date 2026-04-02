@@ -5,8 +5,8 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import portifolio.deuquanto.dto.RegisterUserRequest;
-import portifolio.deuquanto.dto.RegisterUserResponse;
+import portifolio.deuquanto.dto.request.RegisterUserRequest;
+import portifolio.deuquanto.dto.response.RegisterUserResponse;
 import portifolio.deuquanto.entity.Users;
 import portifolio.deuquanto.repository.UserRepository;
 
