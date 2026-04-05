@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import portifolio.deuquanto.dto.JWTUserData;
 import portifolio.deuquanto.dto.request.AddMemberRequest;
 import portifolio.deuquanto.dto.request.CreateGroupRequest;
-import portifolio.deuquanto.dto.response.AllGroupByUserResponse;
+import portifolio.deuquanto.dto.response.GenericGroupResponse;
 import portifolio.deuquanto.dto.response.CreateGroupResponse;
 import portifolio.deuquanto.entity.Group;
 import portifolio.deuquanto.entity.GroupMember;
@@ -42,11 +42,11 @@ public class GroupController {
     }
 
     @GetMapping("/member")
-    public ResponseEntity<List<AllGroupByUserResponse>> getMembersGroup(@AuthenticationPrincipal JWTUserData loggedUser){
+    public ResponseEntity<List<GenericGroupResponse>> getMembersGroup(@AuthenticationPrincipal JWTUserData loggedUser){
         List<GroupMember> membership = groupService.getAllMembersGroups(loggedUser.userId());
 
-        List<AllGroupByUserResponse> responseList = membership.stream()
-                .map(gm -> AllGroupByUserResponse.from(gm.getGroup(), gm.getRole()))
+        List<GenericGroupResponse> responseList = membership.stream()
+                .map(gm -> GenericGroupResponse.from(gm.getGroup(), gm.getRole()))
                 .toList();
 
         return ResponseEntity.ok(responseList);
@@ -61,5 +61,23 @@ public class GroupController {
         groupService.addMember(groupId, request.email());
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
+
+    @PreAuthorize("@groupSecurity.isGroupAdmin(#loggedUser.userId, #groupId)")
+    @GetMapping("/{groupId}/invitation")
+    public ResponseEntity<String> getInviteToken(@AuthenticationPrincipal JWTUserData loggedUser,
+                                                 @PathVariable Long groupId){
+
+        String inviteToken = groupService.getInviteToken(groupId);
+
+        return ResponseEntity.ok(inviteToken);
+    }
+
+    @PostMapping("/join/{inviteToken}")
+    public ResponseEntity<GenericGroupResponse> enterByToken(@AuthenticationPrincipal JWTUserData loggedUser, @PathVariable String inviteToken){
+        GroupMember membership = groupService.joinGroupWithCode(loggedUser.userId(), inviteToken);
+        GenericGroupResponse response = GenericGroupResponse.from(membership.getGroup(), membership.getRole());
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
 
 }

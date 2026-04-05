@@ -10,6 +10,7 @@ import org.hibernate.annotations.Formula;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Entity
 @Table(name = "tb_group")
@@ -31,13 +32,28 @@ public class Group {
 
     private Instant expiresAt;
 
-    private Boolean isExpired;
 
     @Formula("(SELECT COUNT(*) FROM group_members gm WHERE gm.group_id = id)")
     private Integer totalMembers;
 
+    @Column(unique = true)
+    private String inviteToken;
+
     @OneToMany(mappedBy = "group", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<GroupMember> groupMembers = new ArrayList<>();
 
+    @PrePersist
+    public void prePersist(){
+        if(this.inviteToken == null){
+            this.inviteToken = UUID.randomUUID().toString();
+        }
+    }
 
+    @Transient
+    public boolean isExpired(){
+        if(this.expiresAt == null){
+            return false;
+        }
+        return Instant.now().isAfter(this.expiresAt);
+    }
 }

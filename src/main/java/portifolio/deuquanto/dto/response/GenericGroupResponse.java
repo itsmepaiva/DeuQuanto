@@ -6,7 +6,7 @@ import portifolio.deuquanto.entity.GroupRole;
 
 import java.time.Instant;
 
-public record AllGroupByUserResponse(
+public record GenericGroupResponse(
         Long id,
         String title,
         String userRole,
@@ -15,14 +15,14 @@ public record AllGroupByUserResponse(
         Boolean isExpired
 ) {
 
-    public static AllGroupByUserResponse from (Group group, GroupRole role){
-        return new AllGroupByUserResponse(
+    public static GenericGroupResponse from (Group group, GroupRole role){
+        return new GenericGroupResponse(
                 group.getId(),
                 group.getTitle(),
                 role.name(),
                 group.getTotalMembers(),
                 group.getCreatedAt(),
-                group.getIsExpired()
+                group.isExpired()
         );
     }
 }

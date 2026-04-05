@@ -67,19 +67,46 @@ public class GroupService {
 
         isGroupMember(guestUser.getId(), groupId);
 
-        GroupMember newMembership = new GroupMember();
-        newMembership.setUser(guestUser);
-        newMembership.setGroup(group);
-        newMembership.setRole(GroupRole.MEMBER);
-
+        GroupMember newMembership = createMembership(guestUser, group);
         group.getGroupMembers().add(newMembership);
         groupRepository.save(group);
     }
 
-    private void isGroupMember(UUID userId, Long groupId){
+    public String getInviteToken(Long groupId) {
+        Group group = groupRepository.findById(groupId)
+                .orElseThrow(() -> new RuntimeException("Grupo nao encontrado"));
+        return group.getInviteToken();
+    }
+
+    @Transactional
+    public GroupMember joinGroupWithCode(UUID userId, String inviteToken) {
+        Group group = groupRepository.findByInviteToken(inviteToken)
+                .orElseThrow(() -> new RuntimeException("Grupo nao encontrado"));
+        Users loggedUser = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Usuario nao encontrado"));
+
+        isGroupMember(loggedUser.getId(), group.getId());
+
+        GroupMember newMembership = createMembership(loggedUser, group);
+        group.getGroupMembers().add(newMembership);
+        groupRepository.save(group);
+        return newMembership;
+    }
+
+    private GroupMember createMembership(Users user, Group group){
+        GroupMember newMembership = new GroupMember();
+        newMembership.setUser(user);
+        newMembership.setGroup(group);
+        newMembership.setRole(GroupRole.MEMBER);
+        return newMembership;
+    }
+
+    public void isGroupMember(UUID userId, Long groupId){
         GroupMemberId groupMemberId = new GroupMemberId(userId, groupId);
         if (groupMemberRepository.existsById(groupMemberId)){
             throw new RuntimeException("Este usuario ja é membro deste grupo");
         }
     }
+
+
 }
