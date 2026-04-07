@@ -1,13 +1,14 @@
-package portifolio.deuquanto.dto;
+package portifolio.deuquanto.dto.response;
 
 import java.math.BigDecimal;
 import java.util.UUID;
 
-public record SuggestedPaymentDTO(
+public record SuggestedPaymentResponse(
         UUID fromUserId,
         String fromUserName,
         UUID toUserId,
         String toUserName,
-        BigDecimal amount
+        BigDecimal amount,
+        String pixKey
 ){
 }

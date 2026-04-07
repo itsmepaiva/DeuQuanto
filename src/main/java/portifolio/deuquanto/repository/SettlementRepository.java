@@ -6,6 +6,7 @@ import org.springframework.stereotype.Repository;
 import portifolio.deuquanto.entity.Settlement;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 @Repository
@@ -16,4 +17,6 @@ public interface SettlementRepository extends JpaRepository<Settlement, Long> {
 
     @Query("SELECT COALESCE(SUM(s.amount), 0) FROM Settlement s WHERE s.group.id = :groupId AND s.receiver.id = :userId")
     BigDecimal sumTotalReceivedByUser(Long groupId, UUID userId);
+
+    List<Settlement> findByGroupId(Long groupId);
 }
