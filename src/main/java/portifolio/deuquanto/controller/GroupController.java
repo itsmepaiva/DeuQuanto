@@ -14,7 +14,7 @@ import portifolio.deuquanto.dto.response.GenericGroupResponse;
 import portifolio.deuquanto.dto.response.CreateGroupResponse;
 import portifolio.deuquanto.entity.Group;
 import portifolio.deuquanto.entity.GroupMember;
-import portifolio.deuquanto.entity.GroupRole;
+import portifolio.deuquanto.entity.enums.GroupRole;
 import portifolio.deuquanto.service.GroupService;
 
 import java.util.List;
@@ -79,5 +79,8 @@ public class GroupController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    //GET lista de dados rapidos de todos os grupos do usuario
+
+    //GET dados completos de um grupo com membros
 
 }

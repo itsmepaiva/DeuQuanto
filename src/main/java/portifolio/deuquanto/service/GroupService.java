@@ -4,6 +4,7 @@ import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 import portifolio.deuquanto.dto.request.CreateGroupRequest;
 import portifolio.deuquanto.entity.*;
+import portifolio.deuquanto.entity.enums.GroupRole;
 import portifolio.deuquanto.repository.GroupMemberRepository;
 import portifolio.deuquanto.repository.GroupRepository;
 import portifolio.deuquanto.repository.UserRepository;
@@ -65,7 +66,7 @@ public class GroupService {
         Users guestUser = userRepository.findByEmail(guestEmail)
                 .orElseThrow(() -> new RuntimeException("Usuario nao encontrado"));
 
-        isGroupMember(guestUser.getId(), groupId);
+        validateUserIsNotMember(guestUser.getId(), groupId);
 
         GroupMember newMembership = createMembership(guestUser, group);
         group.getGroupMembers().add(newMembership);
@@ -85,7 +86,7 @@ public class GroupService {
         Users loggedUser = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Usuario nao encontrado"));
 
-        isGroupMember(loggedUser.getId(), group.getId());
+        validateUserIsNotMember(loggedUser.getId(), group.getId());
 
         GroupMember newMembership = createMembership(loggedUser, group);
         group.getGroupMembers().add(newMembership);
@@ -101,12 +102,19 @@ public class GroupService {
         return newMembership;
     }
 
-    public void isGroupMember(UUID userId, Long groupId){
-        GroupMemberId groupMemberId = new GroupMemberId(userId, groupId);
-        if (groupMemberRepository.existsById(groupMemberId)){
-            throw new RuntimeException("Este usuario ja é membro deste grupo");
+    private boolean isGroupMember(UUID userId, Long groupId){
+        return groupMemberRepository.existsByUserIdAndGroupId(userId, groupId);
+    }
+
+    public void validateUserIsNotMember(UUID userId, Long groupId) {
+        if (isGroupMember(userId, groupId)) {
+            throw new RuntimeException("Você já faz parte deste grupo.");
         }
     }
 
-
+    public void validateUserIsMember(UUID userId, Long groupId) {
+        if (!isGroupMember(userId, groupId)) {
+            throw new RuntimeException("Acesso negado: Você não é membro deste grupo.");
+        }
+    }
 }

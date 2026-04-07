@@ -11,6 +11,6 @@ import java.util.UUID;
 @Repository
 public interface ExpenseRepository extends JpaRepository<Expense, Long> {
 
-    @Query("SELECT COALESCE(SUM(e.totalAmount), 0) FROM Expense e WHERE e.group.id = groupId AND e.paidBy.id = :userId")
+    @Query("SELECT COALESCE(SUM(e.totalAmount), 0) FROM Expense e WHERE e.group.id = :groupId AND e.paidBy.id = :userId")
     BigDecimal sumTotalPaidByUser(Long groupId, UUID userId);
 }

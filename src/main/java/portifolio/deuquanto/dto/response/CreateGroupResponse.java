@@ -1,7 +1,7 @@
 package portifolio.deuquanto.dto.response;
 
 import portifolio.deuquanto.entity.Group;
-import portifolio.deuquanto.entity.GroupRole;
+import portifolio.deuquanto.entity.enums.GroupRole;
 
 import java.time.Instant;
 

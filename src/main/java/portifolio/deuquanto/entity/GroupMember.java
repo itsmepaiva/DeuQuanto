@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import portifolio.deuquanto.entity.enums.GroupRole;
 
 @Entity
 @Table(name = "group_members")

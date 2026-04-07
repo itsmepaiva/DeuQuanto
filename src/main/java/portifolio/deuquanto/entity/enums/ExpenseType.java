@@ -1,4 +1,4 @@
-package portifolio.deuquanto.entity;
+package portifolio.deuquanto.entity.enums;
 
 public enum ExpenseType {
     MERCADO,

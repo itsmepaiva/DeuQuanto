@@ -32,12 +32,14 @@ public class BalanceController {
         return ResponseEntity.ok(balances);
     }
 
-    @GetMapping("/group/{groupId}//sugestion/")
+    @GetMapping("/group/{groupId}/suggestion")
     public ResponseEntity<List<SuggestedPaymentDTO>> getSuggestedPayment(
             @AuthenticationPrincipal JWTUserData loggedUser,
             @PathVariable Long groupId){
         List<SuggestedPaymentDTO> suggestion = balanceService.getSuggestedPayments(loggedUser.userId(), groupId);
         return ResponseEntity.ok(suggestion);
     }
+
+    //GET historico de valores
 
 }

@@ -4,7 +4,7 @@ package portifolio.deuquanto.security;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import portifolio.deuquanto.entity.GroupMemberId;
-import portifolio.deuquanto.entity.GroupRole;
+import portifolio.deuquanto.entity.enums.GroupRole;
 import portifolio.deuquanto.repository.GroupMemberRepository;
 
 import java.util.UUID;

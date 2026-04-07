@@ -3,6 +3,7 @@ package portifolio.deuquanto.service;
 import org.springframework.stereotype.Service;
 import portifolio.deuquanto.dto.request.ExpenseRequest;
 import portifolio.deuquanto.entity.*;
+import portifolio.deuquanto.entity.enums.ExpenseType;
 import portifolio.deuquanto.repository.ExpenseRepository;
 import portifolio.deuquanto.repository.GroupRepository;
 import portifolio.deuquanto.repository.UserRepository;
@@ -32,6 +33,10 @@ public class ExpenseService {
 
         Group group = groupRepository.findById(groupId)
                 .orElseThrow(() -> new RuntimeException("Grupo nao encontrado"));
+
+        if (group.isExpired()){
+            throw new RuntimeException("O grupo escolhido está expirado");
+        };
 
         Expense newExpense = new Expense();
         newExpense.setType(ExpenseType.valueOf(request.type()));
