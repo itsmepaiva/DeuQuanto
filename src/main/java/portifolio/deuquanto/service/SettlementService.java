@@ -2,6 +2,7 @@ package portifolio.deuquanto.service;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import portifolio.deuquanto.dto.request.SettlementPatchRequest;
 import portifolio.deuquanto.dto.request.SettlementRequest;
 import portifolio.deuquanto.entity.Group;
 import portifolio.deuquanto.entity.Settlement;
@@ -71,4 +72,43 @@ public class SettlementService {
 
         settlementRepository.save(settlement);
     }
+
+    @Transactional
+    public void patchSettlement(UUID userId, Long groupId, Long settlementId, SettlementPatchRequest request){
+        groupService.validateUserIsMember(userId, groupId);
+
+        Settlement settlement = settlementRepository.findById(settlementId)
+                .orElseThrow(() -> new RuntimeException("Acerto financeiro não encontrado."));
+
+        if (!settlement.getGroup().getId().equals(groupId)) {
+            throw new RuntimeException("Este acerto não pertence ao grupo informado.");
+        }
+        if (!settlement.getPayer().getId().equals(userId) &&
+                !settlement.getReceiver().getId().equals(userId)) {
+            throw new RuntimeException("Apenas os envolvidos neste acerto podem editá-lo.");
+        }
+
+        if (request.amount().compareTo(settlement.getAmount()) != 0) {
+            BigDecimal currentDebt = balanceService.getIndividualBalance(groupId, userId).abs();
+            if (request.amount().compareTo(currentDebt) > 0) {
+                throw new RuntimeException("Operação inválida: O valor do pagamento é maior do que a dívida atual.");
+            }
+            settlement.setAmount(request.amount());
+        }
+
+        settlementRepository.save(settlement);
+    }
+
+    public void deleteSettlement(UUID userId, Long groupId, Long settlementId){
+        groupService.validateUserIsMember(userId, groupId);
+        Settlement settlement = settlementRepository.findById(settlementId)
+                .orElseThrow(() -> new RuntimeException("Acerto financeiro não encontrado."));
+
+        if (!settlement.getGroup().getId().equals(groupId)) {
+            throw new RuntimeException("Este acerto não pertence ao grupo informado.");
+        }
+
+        settlementRepository.delete(settlement);
+    }
+
 }
