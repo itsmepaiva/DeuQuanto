@@ -1,14 +1,19 @@
 package portifolio.deuquanto.service;
 
-import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import portifolio.deuquanto.dto.response.GroupDetailedResponse;
+import portifolio.deuquanto.dto.MemberBalanceDTO;
+import portifolio.deuquanto.dto.MemberDTO;
 import portifolio.deuquanto.dto.request.CreateGroupRequest;
+import portifolio.deuquanto.dto.response.GroupSummaryResponse;
 import portifolio.deuquanto.entity.*;
 import portifolio.deuquanto.entity.enums.GroupRole;
 import portifolio.deuquanto.repository.GroupMemberRepository;
 import portifolio.deuquanto.repository.GroupRepository;
 import portifolio.deuquanto.repository.UserRepository;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.List;
@@ -20,11 +25,13 @@ public class GroupService {
     private final GroupRepository groupRepository;
     private final UserRepository userRepository;
     private final GroupMemberRepository groupMemberRepository;
+    private final BalanceService balanceService;
 
-    public GroupService(GroupRepository groupRepository, UserRepository userRepository, GroupMemberRepository groupMemberRepository) {
+    public GroupService(GroupRepository groupRepository, UserRepository userRepository, GroupMemberRepository groupMemberRepository, BalanceService balanceService) {
         this.groupRepository = groupRepository;
         this.userRepository = userRepository;
         this.groupMemberRepository = groupMemberRepository;
+        this.balanceService = balanceService;
     }
 
 
@@ -116,5 +123,79 @@ public class GroupService {
         if (!isGroupMember(userId, groupId)) {
             throw new RuntimeException("Acesso negado: Você não é membro deste grupo.");
         }
+    }
+
+    @Transactional(readOnly = true)
+    public List<GroupSummaryResponse> getMyGroupsSummary(UUID userId) {
+        List<Group> myGroups = groupRepository.findAllByUserId(userId);
+
+        return myGroups.stream()
+                .map(group -> {
+                    BigDecimal balance = balanceService.getIndividualBalance(group.getId(), userId);
+
+                    BigDecimal finalBalance = (balance != null) ? balance : BigDecimal.ZERO;
+                    return new GroupSummaryResponse(
+                            group.getId(),
+                            group.getTitle(),
+                            group.getGroupMembers().size(),
+                            group.isExpired(),
+                            finalBalance
+                    );
+                })
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public GroupDetailedResponse getGroupDetails(UUID userId, Long groupId){
+        validateUserIsMember(userId,groupId);
+        Group group = groupRepository.findById(groupId)
+                .orElseThrow(() -> new RuntimeException("Grupo não encontrado."));
+
+        List<MemberDTO> membersList = group.getGroupMembers().stream()
+                .map(gm -> new MemberDTO(
+                        gm.getUser().getId(),
+                        gm.getUser().getName(),
+                        gm.getUser().getPixKey(),
+                        gm.getRole()
+                ))
+                .toList();
+
+        return new GroupDetailedResponse(
+                group.getId(),
+                group.getTitle(),
+                group.getDescription(),
+                group.getCreatedAt(),
+                group.getExpiresAt(),
+                group.isExpired(),
+                membersList
+        );
+
+    }
+
+
+    @Transactional
+    public void updateGroup(Long groupId, CreateGroupRequest request){
+        Group group = groupRepository.findById(groupId)
+                .orElseThrow(() -> new RuntimeException("Grupo não encontrado."));
+
+        group.setTitle(request.title());
+        group.setDescription(request.description());
+
+        groupRepository.save(group);
+    }
+
+    @Transactional
+    public void deleteGroup(UUID userId, Long groupId) {
+        Group group = groupRepository.findById(groupId)
+                .orElseThrow(() -> new RuntimeException("Grupo não encontrado."));
+
+        List<MemberBalanceDTO> balances = balanceService.getGroupBalances(userId, groupId);
+        boolean hasUnsettledDebts = balances.stream()
+                .anyMatch(b -> b.netBalance().compareTo(BigDecimal.ZERO) != 0);
+        if (hasUnsettledDebts) {
+            throw new RuntimeException("Não é possível apagar um grupo que ainda possui dívidas em aberto. Quitem os saldos primeiro.");
+        }
+
+        groupRepository.delete(group);
     }
 }
