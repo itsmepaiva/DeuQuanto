@@ -1,6 +1,7 @@
 package portifolio.deuquanto.service;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import portifolio.deuquanto.dto.request.ExpenseRequest;
 import portifolio.deuquanto.entity.*;
 import portifolio.deuquanto.entity.enums.ExpenseType;
@@ -12,6 +13,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.ZoneId;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -20,11 +22,13 @@ public class ExpenseService {
     private final UserRepository userRepository;
     private final GroupRepository groupRepository;
     private final ExpenseRepository expenseRepository;
+    private final GroupService groupService;
 
-    public ExpenseService(UserRepository userRepository, GroupRepository groupRepository, ExpenseRepository expenseRepository) {
+    public ExpenseService(UserRepository userRepository, GroupRepository groupRepository, ExpenseRepository expenseRepository, GroupService groupService) {
         this.userRepository = userRepository;
         this.groupRepository = groupRepository;
         this.expenseRepository = expenseRepository;
+        this.groupService = groupService;
     }
 
     public void createExpense(UUID userId, Long groupId, ExpenseRequest request){
@@ -72,6 +76,68 @@ public class ExpenseService {
         expenseRepository.save(newExpense);
     }
 
+    @Transactional
+    public void updateExpense(UUID userId, Long groupId, Long expenseId, ExpenseRequest request){
+        groupService.validateUserIsMember(userId, groupId);
 
+        Expense expense = expenseRepository.findById(expenseId)
+                .orElseThrow(() -> new RuntimeException("Despesa nao encontrada."));
+
+        if (!expense.getGroup().getId().equals(groupId)){
+            throw new RuntimeException("Esta despesa nao pertence ao grupo informado");
+        }
+
+        if (!expense.getPaidBy().getId().equals(userId)) {
+            throw new RuntimeException("Apenas quem pagou a conta pode editá-la.");
+        }
+
+        if (request.description() != null && !request.description().isBlank()) {
+            expense.setDescription(request.description());
+        }
+
+        if (request.type() != null) {
+            expense.setType(ExpenseType.valueOf(request.type()));
+        }
+
+        if (request.amount() != null && request.amount().compareTo(expense.getTotalAmount()) != 0) {
+            expense.setTotalAmount(request.amount());
+            expense.getSplits().clear();
+
+            List<GroupMember> members = groupService.getAllMembersGroups(userId);
+            BigDecimal amountPerPerson = request.amount().divide(
+                    new BigDecimal(members.size()),
+                    2,
+                    RoundingMode.HALF_UP
+            );
+
+            for (GroupMember member : members) {
+                ExpenseSplit split = new ExpenseSplit();
+                split.setExpense(expense);
+                split.setUser(member.getUser());
+                split.setAmountOwed(amountPerPerson);
+
+                // Adiciona na lista limpa (O JPA vai fazer o INSERT no banco automaticamente)
+                expense.getSplits().add(split);
+            }
+        }
+        expenseRepository.save(expense);
+    }
+
+    public void deleteExpense(UUID userId, Long groupId, Long expenseId){
+        groupService.validateUserIsMember(userId, groupId);
+
+        Expense expense = expenseRepository.findById(expenseId)
+                .orElseThrow(() -> new RuntimeException("Despesa não encontrada."));
+
+        if (!expense.getGroup().getId().equals(groupId)) {
+            throw new RuntimeException("Esta despesa não pertence ao grupo informado.");
+        }
+
+        if (!expense.getPaidBy().getId().equals(userId)) {
+            throw new RuntimeException("Apenas o usuário que registrou a despesa pode apagá-la.");
+        }
+
+        expenseRepository.delete(expense);
+    }
 
 }
