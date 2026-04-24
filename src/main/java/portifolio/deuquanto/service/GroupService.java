@@ -180,6 +180,13 @@ public class GroupService {
 
         group.setTitle(request.title());
         group.setDescription(request.description());
+        if(request.expiresAt() != null){
+            Instant instantExpiration = request.expiresAt()
+                    .atTime(23,59,59)
+                    .atZone(ZoneId.of("America/Sao_Paulo"))
+                    .toInstant();
+                    group.setExpiresAt(instantExpiration);
+        }
 
         groupRepository.save(group);
     }
@@ -197,5 +204,29 @@ public class GroupService {
         }
 
         groupRepository.delete(group);
+    }
+
+    @Transactional
+    public void leaveGroup(UUID userId, Long groupId){
+        GroupMember currentMembership = groupMemberRepository.findByGroupIdAndUserId(groupId, userId)
+                .orElseThrow(() -> new RuntimeException("Você não faz parte deste grupo."));
+
+        BigDecimal balance = balanceService.getIndividualBalance(groupId, userId);
+        if (balance != null && balance.compareTo(BigDecimal.ZERO) != 0) {
+            throw new RuntimeException("Você não pode sair de um grupo com saldo pendente (deve estar zerado).");
+        }
+
+        if (currentMembership.getRole() ==GroupRole.ADMIN) {
+            List<GroupMember> successors = groupMemberRepository.findPotentialSuccessors(groupId, userId);
+            if (!successors.isEmpty()) {
+                GroupMember newAdmin = successors.getFirst();
+                newAdmin.setRole(GroupRole.ADMIN);
+                groupMemberRepository.save(newAdmin);
+            } else {
+                groupRepository.deleteById(groupId);
+            }
+        }
+
+        groupMemberRepository.delete(currentMembership);
     }
 }

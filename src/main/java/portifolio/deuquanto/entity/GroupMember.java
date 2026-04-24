@@ -1,14 +1,16 @@
 package portifolio.deuquanto.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
 import portifolio.deuquanto.entity.enums.GroupRole;
+
+import java.time.Instant;
 
 @Entity
 @Table(name = "group_members")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class GroupMember {
@@ -28,4 +30,8 @@ public class GroupMember {
 
     @Enumerated(EnumType.STRING)
     private GroupRole role;
+
+    @CreationTimestamp
+    @Column(updatable = false)
+    private Instant joinedAt;
 }

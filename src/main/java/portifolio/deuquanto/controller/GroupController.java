@@ -125,7 +125,7 @@ public class GroupController {
             summary = "Edita dados do grupo",
             description = "Edita dados estáticos do grupo.")
     public ResponseEntity<Void> editGroup(@AuthenticationPrincipal JWTUserData loggedUser,
-                                          @PathVariable Long groupId, CreateGroupRequest request){
+                                          @PathVariable Long groupId, @RequestBody CreateGroupRequest request){
        groupService.updateGroup(groupId, request);
        return ResponseEntity.ok().build();
     }
@@ -140,6 +140,14 @@ public class GroupController {
     public ResponseEntity<Void> deleteGroup(@AuthenticationPrincipal JWTUserData loggedUser,
                                             @PathVariable Long groupId){
         groupService.deleteGroup(loggedUser.userId(), groupId);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/{groupId}/leave")
+    @Operation(summary = "Sair do grupo", description = "Remove o usuário do grupo. Se for Admin, transfere o cargo para o membro mais antigo.")
+    public ResponseEntity<Void> leaveGroup(@AuthenticationPrincipal JWTUserData loggedUser,
+                                           @PathVariable Long groupId) {
+        groupService.leaveGroup(loggedUser.userId(), groupId);
         return ResponseEntity.ok().build();
     }
 }
