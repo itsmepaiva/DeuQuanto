@@ -1,9 +1,7 @@
 package portifolio.deuquanto.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import portifolio.deuquanto.entity.enums.ExpenseType;
 
 import java.math.BigDecimal;
@@ -13,7 +11,8 @@ import java.util.List;
 
 @Entity
 @Table (name = "tb_expense")
-@Data
+@Getter
+@Setter
 @AllArgsConstructor
 @NoArgsConstructor
 public class Expense {
