@@ -1,9 +1,7 @@
 package portifolio.deuquanto.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -12,7 +10,8 @@ import java.time.Instant;
 
 @Entity
 @Table(name = "tb_settlement")
-@Data
+@Getter
+@Setter
 @AllArgsConstructor
 @NoArgsConstructor
 public class Settlement {

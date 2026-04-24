@@ -101,8 +101,14 @@ public class SettlementService {
 
     public void deleteSettlement(UUID userId, Long groupId, Long settlementId){
         groupService.validateUserIsMember(userId, groupId);
+
         Settlement settlement = settlementRepository.findById(settlementId)
                 .orElseThrow(() -> new RuntimeException("Acerto financeiro não encontrado."));
+
+        if (!settlement.getPayer().getId().equals(userId) &&
+                !settlement.getReceiver().getId().equals(userId)) {
+            throw new RuntimeException("Apenas os envolvidos neste acerto podem apagá-lo.");
+        }
 
         if (!settlement.getGroup().getId().equals(groupId)) {
             throw new RuntimeException("Este acerto não pertence ao grupo informado.");
