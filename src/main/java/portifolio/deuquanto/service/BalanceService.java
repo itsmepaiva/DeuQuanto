@@ -26,20 +26,20 @@ public class BalanceService {
     private final GroupRepository groupRepository;
     private final ExpenseSplitRepository expenseSplitRepository;
     private final ExpenseRepository expenseRepository;
-    private final GroupService groupService;
+    private final GroupMemberRepository groupMemberRepository;
     private final SettlementRepository settlementRepository;
 
-    public BalanceService(GroupRepository groupRepository, ExpenseSplitRepository expenseSplitRepository, ExpenseRepository expenseRepository, GroupService groupService, SettlementRepository settlementRepository) {
+    public BalanceService(GroupRepository groupRepository, ExpenseSplitRepository expenseSplitRepository, ExpenseRepository expenseRepository, GroupMemberRepository groupMemberRepository, SettlementRepository settlementRepository) {
         this.groupRepository = groupRepository;
         this.expenseSplitRepository = expenseSplitRepository;
         this.expenseRepository = expenseRepository;
-        this.groupService = groupService;
+        this.groupMemberRepository = groupMemberRepository;
         this.settlementRepository = settlementRepository;
     }
 
     @Transactional(readOnly = true)
     public List<MemberBalanceDTO> getGroupBalances(UUID userId, Long groupId) {
-        groupService.validateUserIsMember(userId, groupId);
+        validateUserIsMember(userId, groupId);
 
         Group group = groupRepository.findById(groupId)
                 .orElseThrow(() -> new RuntimeException("Grupo não encontrado"));
@@ -123,7 +123,7 @@ public class BalanceService {
     };
 
     public IndividualBalanceDTO getIndividualAllBalance(UUID userID){
-        List<GroupMember> membership = groupService.getAllMembersGroups(userID);
+        List<GroupMember> membership = getAllMembersGroup(userID);
 
         List<IndividualGroupBalanceDTO> groupBalance = new ArrayList<>();
         BigDecimal totalBalance = ZERO;
@@ -155,7 +155,7 @@ public class BalanceService {
     };
 
     public List<GroupActivityDTO> getGroupHistory(UUID loggedUserId, Long groupId){
-        groupService.validateUserIsMember(loggedUserId, groupId);
+        validateUserIsMember(loggedUserId, groupId);
 
         List<GroupActivityDTO> history = new ArrayList<>();
 
@@ -174,7 +174,7 @@ public class BalanceService {
 
         List<Settlement> settlements = settlementRepository.findByGroupId(groupId);
         for (Settlement s : settlements){
-            String paymentTitle = "Pagamento de " + s.getPayer().getName() + " para " + s.getReceiver();
+            String paymentTitle = "Pagamento de " + s.getPayer().getName() + " para " + s.getReceiver().getName();
             history.add(new GroupActivityDTO(
                     s.getId(),
                     ActivityType.SETTLEMENT,
@@ -204,5 +204,16 @@ public class BalanceService {
             this.amount = amount;
             this.pixKey = pixKey;
         }
+    }
+
+    private void validateUserIsMember(UUID userId, Long groupId) {
+        boolean isMember = groupMemberRepository.existsByUserIdAndGroupId(userId, groupId);
+        if (!isMember) {
+            throw new RuntimeException("Acesso negado: Você não faz parte deste grupo.");
+        }
+    }
+
+    private List<GroupMember> getAllMembersGroup(UUID userId) {
+        return groupMemberRepository.findAllByUserIdWithGroups(userId);
     }
 }
