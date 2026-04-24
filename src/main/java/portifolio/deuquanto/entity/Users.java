@@ -2,9 +2,7 @@ package portifolio.deuquanto.entity;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
@@ -15,7 +13,8 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "tb_users")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class Users implements UserDetails {
