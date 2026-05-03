@@ -9,13 +9,13 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import portifolio.deuquanto.dto.JWTUserData;
 import portifolio.deuquanto.dto.UserProfileDTO;
-import portifolio.deuquanto.dto.request.LoginRequest;
-import portifolio.deuquanto.dto.request.UserPatchRequest;
+import portifolio.deuquanto.dto.request.*;
 import portifolio.deuquanto.dto.response.LoginResponse;
-import portifolio.deuquanto.dto.request.RegisterUserRequest;
 import portifolio.deuquanto.dto.response.RegisterUserResponse;
 import portifolio.deuquanto.service.AuthService;
 import portifolio.deuquanto.service.UserService;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/users")
@@ -58,5 +58,26 @@ public class UserController {
     public ResponseEntity<Void> deleteMyAccount(@AuthenticationPrincipal JWTUserData loggedUser) {
         userService.deleteUserAccount(loggedUser.userId());
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        authService.requestPasswordReset(request.email());
+
+        return ResponseEntity.ok(Map.of(
+                "message", "Se o e-mail estiver cadastrado, você receberá um link de recuperação em instantes."
+        ));
+    }
+
+    @GetMapping("/reset-password/validate")
+    public ResponseEntity<?> validateResetToken(@RequestParam String token) {
+        authService.validateResetToken(token);
+        return ResponseEntity.ok(Map.of("message", "Token válido e pronto para uso."));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        authService.resetPassword(request.token(), request.newPassword());
+        return ResponseEntity.ok(Map.of("message", "Senha redefinida com sucesso."));
     }
 }
