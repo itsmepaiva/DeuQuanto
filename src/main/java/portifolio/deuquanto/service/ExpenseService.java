@@ -1,10 +1,14 @@
 package portifolio.deuquanto.service;
 
+import jakarta.persistence.EntityNotFoundException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import portifolio.deuquanto.dto.request.ExpenseRequest;
 import portifolio.deuquanto.entity.*;
 import portifolio.deuquanto.entity.enums.ExpenseType;
+import portifolio.deuquanto.exception.BusinessException;
 import portifolio.deuquanto.repository.ExpenseRepository;
 import portifolio.deuquanto.repository.GroupRepository;
 import portifolio.deuquanto.repository.UserRepository;
@@ -18,6 +22,8 @@ import java.util.UUID;
 
 @Service
 public class ExpenseService {
+
+    private static final Logger log = LoggerFactory.getLogger(ExpenseService.class);
 
     private final UserRepository userRepository;
     private final GroupRepository groupRepository;
@@ -33,13 +39,13 @@ public class ExpenseService {
 
     public void createExpense(UUID userId, Long groupId, ExpenseRequest request){
         Users creator = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("Usuario nao encontrado!"));
+                .orElseThrow(() -> new EntityNotFoundException("Usuario nao encontrado!"));
 
         Group group = groupRepository.findById(groupId)
-                .orElseThrow(() -> new RuntimeException("Grupo nao encontrado"));
+                .orElseThrow(() -> new EntityNotFoundException("Grupo nao encontrado"));
 
         if (group.isExpired()){
-            throw new RuntimeException("O grupo escolhido está expirado");
+            throw new BusinessException("O grupo escolhido está expirado");
         };
 
         Expense newExpense = new Expense();
@@ -74,6 +80,7 @@ public class ExpenseService {
         }
 
         expenseRepository.save(newExpense);
+        log.info("Expense {} criada com sucesso", newExpense.getId());
     }
 
     @Transactional
@@ -81,14 +88,14 @@ public class ExpenseService {
         groupService.validateUserIsMember(userId, groupId);
 
         Expense expense = expenseRepository.findById(expenseId)
-                .orElseThrow(() -> new RuntimeException("Despesa nao encontrada."));
+                .orElseThrow(() -> new EntityNotFoundException("Despesa nao encontrada."));
 
         if (!expense.getGroup().getId().equals(groupId)){
-            throw new RuntimeException("Esta despesa nao pertence ao grupo informado");
+            throw new BusinessException("Esta despesa nao pertence ao grupo informado");
         }
 
         if (!expense.getPaidBy().getId().equals(userId)) {
-            throw new RuntimeException("Apenas quem pagou a conta pode editá-la.");
+            throw new BusinessException("Apenas quem pagou a conta pode editá-la.");
         }
 
         if (request.description() != null && !request.description().isBlank()) {
@@ -116,28 +123,30 @@ public class ExpenseService {
                 split.setUser(member.getUser());
                 split.setAmountOwed(amountPerPerson);
 
-                // Adiciona na lista limpa (O JPA vai fazer o INSERT no banco automaticamente)
                 expense.getSplits().add(split);
             }
         }
         expenseRepository.save(expense);
+        log.info("Dados da Expense {} atualizados", expense.getId());
     }
 
     public void deleteExpense(UUID userId, Long groupId, Long expenseId){
+        log.info("Iniciando exclusão da expense {}", expenseId);
         groupService.validateUserIsMember(userId, groupId);
 
         Expense expense = expenseRepository.findById(expenseId)
-                .orElseThrow(() -> new RuntimeException("Despesa não encontrada."));
+                .orElseThrow(() -> new EntityNotFoundException("Despesa não encontrada."));
 
         if (!expense.getGroup().getId().equals(groupId)) {
-            throw new RuntimeException("Esta despesa não pertence ao grupo informado.");
+            throw new BusinessException("Esta despesa não pertence ao grupo informado.");
         }
 
         if (!expense.getPaidBy().getId().equals(userId)) {
-            throw new RuntimeException("Apenas o usuário que registrou a despesa pode apagá-la.");
+            throw new BusinessException("Apenas o usuário que registrou a despesa pode apagá-la.");
         }
 
         expenseRepository.delete(expense);
+        log.info("Expense {} deletada com sucesso", expense.getId());
     }
 
 }

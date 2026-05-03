@@ -1,5 +1,8 @@
 package portifolio.deuquanto.service;
 
+import jakarta.persistence.EntityNotFoundException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import portifolio.deuquanto.dto.GroupActivityDTO;
@@ -10,6 +13,7 @@ import portifolio.deuquanto.dto.response.SuggestedPaymentResponse;
 import portifolio.deuquanto.entity.*;
 import portifolio.deuquanto.entity.enums.ActivityType;
 import portifolio.deuquanto.entity.enums.BalanceStatus;
+import portifolio.deuquanto.exception.BusinessException;
 import portifolio.deuquanto.repository.*;
 
 import java.math.BigDecimal;
@@ -23,6 +27,9 @@ import static java.math.BigDecimal.ZERO;
 
 @Service
 public class BalanceService {
+
+    private static final Logger log = LoggerFactory.getLogger(BalanceService.class);
+
     private final GroupRepository groupRepository;
     private final ExpenseSplitRepository expenseSplitRepository;
     private final ExpenseRepository expenseRepository;
@@ -42,7 +49,7 @@ public class BalanceService {
         validateUserIsMember(userId, groupId);
 
         Group group = groupRepository.findById(groupId)
-                .orElseThrow(() -> new RuntimeException("Grupo não encontrado"));
+                .orElseThrow(() -> new EntityNotFoundException("Grupo não encontrado"));
 
         List<MemberBalanceDTO> balances = new ArrayList<>();
 
@@ -110,11 +117,11 @@ public class BalanceService {
     }
 
     public BigDecimal getIndividualBalance(Long groupId, UUID userId){
-        BigDecimal expensesPaid = expenseRepository.sumTotalPaidByUser(groupId, userId);
-        BigDecimal expensesOwed = expenseSplitRepository.sumTotalOwedByUser(groupId, userId);
+        BigDecimal expensesPaid = safeZero(expenseRepository.sumTotalPaidByUser(groupId, userId));
+        BigDecimal expensesOwed = safeZero(expenseSplitRepository.sumTotalOwedByUser(groupId, userId));
 
-        BigDecimal paymentSent = settlementRepository.sumTotalSentByUser(groupId, userId);
-        BigDecimal paymentReceived = settlementRepository.sumTotalReceivedByUser(groupId, userId);
+        BigDecimal paymentSent = safeZero(settlementRepository.sumTotalSentByUser(groupId, userId));
+        BigDecimal paymentReceived = safeZero(settlementRepository.sumTotalReceivedByUser(groupId, userId));
 
         BigDecimal totalCredits = expensesPaid.add(paymentSent);
         BigDecimal totalDebits = expensesOwed.add(paymentReceived);
@@ -209,11 +216,15 @@ public class BalanceService {
     private void validateUserIsMember(UUID userId, Long groupId) {
         boolean isMember = groupMemberRepository.existsByUserIdAndGroupId(userId, groupId);
         if (!isMember) {
-            throw new RuntimeException("Acesso negado: Você não faz parte deste grupo.");
+            throw new BusinessException("Acesso negado: Você não faz parte deste grupo.");
         }
     }
 
     private List<GroupMember> getAllMembersGroup(UUID userId) {
         return groupMemberRepository.findAllByUserIdWithGroups(userId);
+    }
+
+    private BigDecimal safeZero(BigDecimal value){
+        return value != null ? value : ZERO;
     }
 }

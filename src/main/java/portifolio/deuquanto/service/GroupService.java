@@ -1,7 +1,11 @@
 package portifolio.deuquanto.service;
 
+import jakarta.persistence.EntityNotFoundException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import portifolio.deuquanto.configuration.DataMasker;
 import portifolio.deuquanto.dto.response.GroupDetailedResponse;
 import portifolio.deuquanto.dto.MemberBalanceDTO;
 import portifolio.deuquanto.dto.MemberDTO;
@@ -9,6 +13,7 @@ import portifolio.deuquanto.dto.request.CreateGroupRequest;
 import portifolio.deuquanto.dto.response.GroupSummaryResponse;
 import portifolio.deuquanto.entity.*;
 import portifolio.deuquanto.entity.enums.GroupRole;
+import portifolio.deuquanto.exception.BusinessException;
 import portifolio.deuquanto.repository.GroupMemberRepository;
 import portifolio.deuquanto.repository.GroupRepository;
 import portifolio.deuquanto.repository.UserRepository;
@@ -21,6 +26,8 @@ import java.util.UUID;
 
 @Service
 public class GroupService {
+
+    private static final Logger log = LoggerFactory.getLogger(GroupService.class);
 
     private final GroupRepository groupRepository;
     private final UserRepository userRepository;
@@ -38,7 +45,7 @@ public class GroupService {
     @Transactional
     public Group createGroup(UUID creatorId, CreateGroupRequest request){
         Users creator = userRepository.findById(creatorId)
-                .orElseThrow(() -> new RuntimeException("Usuario nao encontrado!"));
+                .orElseThrow(() -> new EntityNotFoundException("Usuario nao encontrado!"));
 
         Group newGroup = new Group();
         newGroup.setTitle(request.title());
@@ -59,6 +66,7 @@ public class GroupService {
 
         newGroup.getGroupMembers().add(membership);
 
+        log.info("Grupo criado com sucesso: {}", newGroup.getId());
         return groupRepository.save(newGroup);
     }
 
@@ -69,35 +77,37 @@ public class GroupService {
     @Transactional
     public void addMember(Long groupId, String guestEmail){
         Group group = groupRepository.findById(groupId)
-                .orElseThrow(() -> new RuntimeException("Grupo nao encontrado"));
+                .orElseThrow(() -> new EntityNotFoundException("Grupo nao encontrado"));
         Users guestUser = userRepository.findByEmail(guestEmail)
-                .orElseThrow(() -> new RuntimeException("Usuario nao encontrado"));
+                .orElseThrow(() -> new EntityNotFoundException("Usuario nao encontrado"));
 
         validateUserIsNotMember(guestUser.getId(), groupId);
 
         GroupMember newMembership = createMembership(guestUser, group);
         group.getGroupMembers().add(newMembership);
         groupRepository.save(group);
+        log.info("Novo membro {} adicionado no grupo {} pelo admin", DataMasker.maskEmail(guestEmail), group.getId());
     }
 
     public String getInviteToken(Long groupId) {
         Group group = groupRepository.findById(groupId)
-                .orElseThrow(() -> new RuntimeException("Grupo nao encontrado"));
+                .orElseThrow(() -> new EntityNotFoundException("Grupo nao encontrado"));
         return group.getInviteToken();
     }
 
     @Transactional
     public GroupMember joinGroupWithCode(UUID userId, String inviteToken) {
         Group group = groupRepository.findByInviteToken(inviteToken)
-                .orElseThrow(() -> new RuntimeException("Grupo nao encontrado"));
+                .orElseThrow(() -> new EntityNotFoundException("Grupo nao encontrado"));
         Users loggedUser = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("Usuario nao encontrado"));
+                .orElseThrow(() -> new EntityNotFoundException("Usuario nao encontrado"));
 
         validateUserIsNotMember(loggedUser.getId(), group.getId());
 
         GroupMember newMembership = createMembership(loggedUser, group);
         group.getGroupMembers().add(newMembership);
         groupRepository.save(group);
+        log.info("Novo membro {} entrou via token no grupo: {}", userId, group.getId());
         return newMembership;
     }
 
@@ -115,13 +125,13 @@ public class GroupService {
 
     public void validateUserIsNotMember(UUID userId, Long groupId) {
         if (isGroupMember(userId, groupId)) {
-            throw new RuntimeException("Você já faz parte deste grupo.");
+            throw new BusinessException("Você já faz parte deste grupo.");
         }
     }
 
     public void validateUserIsMember(UUID userId, Long groupId) {
         if (!isGroupMember(userId, groupId)) {
-            throw new RuntimeException("Acesso negado: Você não é membro deste grupo.");
+            throw new BusinessException("Acesso negado: Você não é membro deste grupo.");
         }
     }
 
@@ -149,7 +159,7 @@ public class GroupService {
     public GroupDetailedResponse getGroupDetails(UUID userId, Long groupId){
         validateUserIsMember(userId,groupId);
         Group group = groupRepository.findById(groupId)
-                .orElseThrow(() -> new RuntimeException("Grupo não encontrado."));
+                .orElseThrow(() -> new EntityNotFoundException("Grupo não encontrado."));
 
         List<MemberDTO> membersList = group.getGroupMembers().stream()
                 .map(gm -> new MemberDTO(
@@ -176,7 +186,7 @@ public class GroupService {
     @Transactional
     public void updateGroup(Long groupId, CreateGroupRequest request){
         Group group = groupRepository.findById(groupId)
-                .orElseThrow(() -> new RuntimeException("Grupo não encontrado."));
+                .orElseThrow(() -> new EntityNotFoundException("Grupo não encontrado."));
 
         group.setTitle(request.title());
         group.setDescription(request.description());
@@ -189,31 +199,35 @@ public class GroupService {
         }
 
         groupRepository.save(group);
+        log.info("Dados atualizado do grupo {}", group.getId());
     }
 
     @Transactional
     public void deleteGroup(UUID userId, Long groupId) {
+        log.info("Iniciando exclusão do grupo: {}", groupId);
         Group group = groupRepository.findById(groupId)
-                .orElseThrow(() -> new RuntimeException("Grupo não encontrado."));
+                .orElseThrow(() -> new EntityNotFoundException("Grupo não encontrado."));
 
         List<MemberBalanceDTO> balances = balanceService.getGroupBalances(userId, groupId);
         boolean hasUnsettledDebts = balances.stream()
                 .anyMatch(b -> b.netBalance().compareTo(BigDecimal.ZERO) != 0);
         if (hasUnsettledDebts) {
-            throw new RuntimeException("Não é possível apagar um grupo que ainda possui dívidas em aberto. Quitem os saldos primeiro.");
+            throw new BusinessException("Não é possível apagar um grupo que ainda possui dívidas em aberto. Quitem os saldos primeiro.");
         }
 
         groupRepository.delete(group);
+        log.info("Grupo {} excluido com sucesso", groupId);
     }
 
     @Transactional
     public void leaveGroup(UUID userId, Long groupId){
+        log.info("Iniciando saída do usuario {} do grupo {}", userId, groupId);
         GroupMember currentMembership = groupMemberRepository.findByGroupIdAndUserId(groupId, userId)
-                .orElseThrow(() -> new RuntimeException("Você não faz parte deste grupo."));
+                .orElseThrow(() -> new BusinessException("Você não faz parte deste grupo."));
 
         BigDecimal balance = balanceService.getIndividualBalance(groupId, userId);
         if (balance != null && balance.compareTo(BigDecimal.ZERO) != 0) {
-            throw new RuntimeException("Você não pode sair de um grupo com saldo pendente (deve estar zerado).");
+            throw new BusinessException("Você não pode sair de um grupo com saldo pendente (deve estar zerado).");
         }
 
         if (currentMembership.getRole() ==GroupRole.ADMIN) {
@@ -222,8 +236,10 @@ public class GroupService {
                 GroupMember newAdmin = successors.getFirst();
                 newAdmin.setRole(GroupRole.ADMIN);
                 groupMemberRepository.save(newAdmin);
+                log.info("Usuario {} saiu do grupo {} e foi definido um novo admin", userId, groupId);
             } else {
                 groupRepository.deleteById(groupId);
+                log.info("Usuario {} saiu e grupo {} foi excluido", userId, groupId);
             }
         }
 
